@@ -113,7 +113,7 @@ kyc_map = {
     "MEDIUM": ([0, 1, 2, 3], [0.10, 0.30, 0.45, 0.15]),
     "LOW":    ([0, 1, 2, 3], [0.25, 0.45, 0.25, 0.05]),
 }
-kyc_levels = [int(rng.choice(*kyc_map[s])) for s in risk_segments]
+kyc_levels = [int(rng.choice(kyc_map[s][0], p=kyc_map[s][1])) for s in risk_segments]
 
 # Ages 18–65
 ages       = np.clip(rng.normal(30, 8, N_CUSTOMERS), 18, 65).astype(int)
