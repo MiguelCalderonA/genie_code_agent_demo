@@ -402,69 +402,26 @@ Show full notebook + pipeline config.
 
 ---
 
-## Prompt 08 — Data Quality: Delta Constraints & Table Tags
+## Prompt 08 — Data Quality: Delta Constraints & Tags
 
-**Goal:** Enforce data quality at the storage layer with Delta table constraints and
-Unity Catalog tags for governance.
+**Goal:** Add key Delta constraints and PII tags to the most important tables.
 
 ```
-Generate a notebook called "bitso_apply_constraints_and_tags" that applies Delta table
-constraints, column tags, and table properties across all medallion layers.
+Create a short notebook called "bitso_governance" in bitso_demo.
 
-SECTION 1 — Delta table CONSTRAINTS (ALTER TABLE ... ADD CONSTRAINT)
+Add these Delta constraints (ALTER TABLE ... ADD CONSTRAINT):
+  bitso_demo.bronze.customers  → valid_country: country IN ('MX','AR','BR')
+  bitso_demo.bronze.trades     → positive_volume: volume_mxn > 0
+  bitso_demo.silver.customers  → valid_risk_segment: risk_segment IN ('HIGH','MEDIUM','LOW')
+  bitso_demo.gold.customer_360 → valid_tier: customer_value_tier IN ('PLATINUM','GOLD','SILVER','BRONZE','INACTIVE')
 
-bronze.customers:
-  valid_kyc_range:      kyc_level BETWEEN 0 AND 3
-  valid_country:        country IN ('MX', 'AR', 'BR')
+Add table tags (ALTER TABLE ... SET TAGS):
+  All bronze tables → layer='bronze', project='bitso_hvt'
+  All silver tables → layer='silver', project='bitso_hvt'
+  All gold tables   → layer='gold',   project='bitso_hvt'
+  bronze.customers and silver.customers → pii='true'
 
-bronze.trades:
-  positive_volume:      volume_mxn > 0
-  valid_side:           side IN ('buy', 'sell')
-  positive_fee:         fee_mxn >= 0
-
-bronze.deposits:
-  positive_amount:      amount_mxn > 0
-  valid_status:         status IN ('completed','pending','failed','reversed')
-
-bronze.kyc_events:
-  valid_event_type:     event_type IN ('submitted','approved','rejected','upgrade_requested','downgraded')
-
-silver.customers:
-  valid_kyc_final:      kyc_level_final BETWEEN 0 AND 3
-  valid_risk_segment:   risk_segment IN ('HIGH','MEDIUM','LOW')
-  non_negative_tenure:  days_since_registration >= 0
-
-gold.customer_360:
-  valid_tier:           customer_value_tier IN ('PLATINUM','GOLD','SILVER','BRONZE','INACTIVE')
-
-gold.ml_features:
-  valid_label:          label IN (0, 1)
-
-SECTION 2 — Table and column tags (ALTER TABLE ... SET TAGS, ALTER TABLE ... ALTER COLUMN ... SET TAGS)
-
-Apply table-level tags:
-  layer = 'bronze' / 'silver' / 'gold'
-  domain = 'marketing_analytics'
-  project = 'bitso_hvt_propensity'
-  pii_contains = 'true' (for customers tables only)
-
-Apply column-level tags on silver.customers and gold.customer_360:
-  email column:        pii='true', pii_type='email'
-  phone column:        pii='true', pii_type='phone'
-  first_name column:   pii='true', pii_type='name'
-  last_name column:    pii='true', pii_type='name'
-  birth_date column:   pii='true', pii_type='date_of_birth'
-
-SECTION 3 — Table comments (ALTER TABLE ... SET TBLPROPERTIES or COMMENT ON)
-Set meaningful table comments on all 9 medallion tables.
-
-SECTION 4 — Row count validation
-After applying constraints, run a check:
-  - For each table, assert that current row count equals row count before
-    (constraints should not drop any rows since data was generated to be valid).
-  - Print a pass/fail report.
-
-Show the complete notebook.
+Print "Done" when finished.
 ```
 
 ---
@@ -512,111 +469,53 @@ the Databricks Jobs REST API (POST /api/2.1/jobs/create).
 
 ---
 
-## Prompt 10 — Exploratory Analysis: Customer Segmentation & Trading Behaviour
+## Prompt 10 — Exploratory Analysis: Customer & Trading
 
-**Goal:** Generate a rich EDA notebook with Python visualisations exploring
-customer segments and trading patterns using the gold layer.
+**Goal:** Quick EDA notebook with 4 key charts from the gold layer.
 
 ```
-Create a Databricks notebook called "eda_01_customer_and_trading_analysis" in Python
-that performs exploratory data analysis on the gold layer using matplotlib and seaborn.
-Read all data from bitso_demo.gold.customer_360.
+Create a Python notebook called "eda_01_customer_trading" using matplotlib.
+Read from bitso_demo.gold.customer_360 (convert to pandas).
 
-The notebook should have clearly labelled sections with markdown headings.
+Make 4 charts in a 2×2 grid (fig, axes = plt.subplots(2,2, figsize=(14,10))):
+  1. Bar: customer count by customer_value_tier
+  2. Scatter: avg_monthly_volume_mxn vs avg_monthly_trade_count,
+     coloured by is_high_value_trader. Add dashed lines at x=10 and y=200000.
+  3. Bar: avg lifetime_volume_mxn by country
+  4. Bar: avg total_sessions by customer_value_tier
 
-SECTION 1 — Dataset Overview
-- Total customers, HVT count and percentage, customer_value_tier distribution (pie chart)
-- Breakdown by country and risk_segment (grouped bar chart)
-- Heatmap: count of customers by country × customer_value_tier
-
-SECTION 2 — Trading Behaviour
-- Distribution of lifetime_volume_mxn (log scale histogram, coloured by is_high_value_trader)
-- Distribution of lifetime_trade_count (log scale, coloured by tier)
-- Scatter plot: avg_monthly_volume_mxn vs avg_monthly_trade_count, coloured by tier,
-  with a horizontal line at 200K MXN and vertical line at 10 trades (the HVT threshold)
-- Box plots: unique_pairs_traded by customer_value_tier
-- Line chart: average monthly trading volume over time by tier
-  (use bitso_demo.silver.monthly_trade_summary for this chart)
-
-SECTION 3 — Deposit & Liquidity Patterns
-- Bar chart: avg_deposit_mxn by customer_value_tier
-- Distribution of total_deposited_mxn for HVT vs non-HVT (overlapping KDE plot)
-- Bar chart: deposit_to_volume_ratio by tier (shows leverage effect)
-- Scatter: total_deposited_mxn vs lifetime_volume_mxn coloured by tier
-
-SECTION 4 — KYC & Compliance
-- Bar chart: KYC level distribution by risk_segment
-- Stacked bar: HVT rate by kyc_level_final (shows correlation between KYC and HVT)
-
-SECTION 5 — Engagement Signals
-- Scatter: total_sessions vs lifetime_trade_count coloured by tier
-- Bar: avg push_open_rate by customer_value_tier
-- Bar: avg mktg_ctr by customer_value_tier
-- Correlation heatmap of all numeric features vs the label (is_high_value_trader)
-
-Use a consistent Bitso-inspired colour palette:
-  HVT / PLATINUM = #1DB954 (green)
-  GOLD = #F5A623
-  SILVER = #9B9B9B
-  BRONZE = #8B572A
-  INACTIVE = #D0021B
-
-Each chart must have a title, axis labels, and a one-sentence business insight
-in the markdown cell following it explaining what the chart shows.
+Title each chart. Call plt.tight_layout() and display.
 ```
 
 ---
 
-## Prompt 11 — Exploratory Analysis: Marketing Attribution & Engagement Funnel
+## Prompt 11 — Exploratory Analysis: Marketing & Engagement
 
-**Goal:** Second EDA notebook focused on marketing channels, campaign performance,
-and engagement funnel analysis.
+**Goal:** Quick EDA notebook with 4 charts covering marketing and app behaviour.
 
 ```
-Create a Databricks notebook called "eda_02_marketing_and_engagement_analysis" in Python
-using matplotlib and seaborn. Read from bitso_demo.bronze and bitso_demo.silver tables.
+Create a Python notebook called "eda_02_marketing_engagement" using matplotlib.
 
-SECTION 1 — Marketing Campaign Performance
-Read from bitso_demo.bronze.marketing_impressions.
-- Bar chart: impressions, clicks, and conversions per channel (grouped bars)
-- Funnel chart: impressions → clicks → conversions for the top 5 campaigns by conversion_value_mxn
-- Scatter: CTR vs CVR by campaign, bubble size = total conversion_value_mxn, coloured by campaign_type
-- Heatmap: CTR by channel × campaign_type (pivot table)
+Chart 1 — Marketing CTR by channel:
+  Read bitso_demo.bronze.marketing_impressions (use spark, convert to pandas).
+  Group by channel: count impressions, sum clicks. Compute ctr = clicks/impressions.
+  Bar chart of ctr by channel, sorted descending.
 
-SECTION 2 — Push Notification Effectiveness
-Read from bitso_demo.bronze.push_notifications.
-- Bar: open_rate by notification_type (sort descending)
-- Bar: action_rate by notification_type
-- Scatter: push_open_rate vs push_action_rate by customer (sample 2000 rows),
-  coloured by risk_segment from bronze.customers (join needed)
-- Line chart: push volume over time (monthly, by notification_type)
+Chart 2 — Push open rate by notification type:
+  Read bitso_demo.bronze.push_notifications.
+  Group by notification_type: compute open_rate = sum(opened)/count.
+  Horizontal bar chart sorted descending.
 
-SECTION 3 — App Engagement Deep Dive
-Read from bitso_demo.bronze.app_sessions.
-- Bar: average session duration by primary_feature (sort descending)
-- Bar: trade_initiation_rate by device_type
-- Histogram: session duration distribution for trade_initiated=True vs False
-- Heatmap: session count by day_of_week × hour_of_day (extract from session_start_ts)
-  (use only a sample of 50K rows for performance)
+Chart 3 — Avg session duration by primary feature:
+  Read bitso_demo.bronze.app_sessions (sample 50000 rows).
+  Group by primary_feature: avg duration_seconds.
+  Bar chart sorted descending.
 
-SECTION 4 — Referral Network Analysis
-Read from bitso_demo.bronze.referrals joined with bronze.customers.
-- Bar: referrals_given distribution (how many customers gave 0, 1, 2, 3+ referrals)
-- Bar: reward_status breakdown
-- Bar: average referrals_given by risk_segment of the referrer
-- Bar chart: average propensity_score of referred vs non-referred customers
-  (join to bitso_demo.gold.propensity_scores if it exists, otherwise use is_high_value_trader)
+Chart 4 — Support tickets by category:
+  Read bitso_demo.bronze.support_tickets.
+  Count tickets per category. Bar chart sorted descending.
 
-SECTION 5 — Customer Support Health
-Read from bitso_demo.bronze.support_tickets.
-- Bar: ticket count by category (sorted)
-- Box plot: resolution_hours by priority
-- Bar: average CSAT score by category
-- Scatter: total_tickets vs avg_csat_score per customer (sample 2000),
-  coloured by risk_segment
-
-Add a final markdown cell with 5 bullet-point business recommendations
-derived from the patterns observed in the data.
+Show all 4 in a 2×2 grid. Title each. plt.tight_layout() and display.
 ```
 
 ---
@@ -683,118 +582,49 @@ Provide:
 
 ## Prompt 13 — ML Model: Propensity Classifier
 
-**Goal:** Build and log a production-grade propensity model using the gold ML feature table.
+**Goal:** Train a propensity model, log it to MLflow, and save scores.
 
 ```
-Create a Databricks notebook called "ml_01_propensity_model_training" that trains a
-Gradient Boosted Tree classifier to predict HVT propensity using MLflow for tracking.
+Create a Python notebook called "ml_01_propensity_model".
 
-Read features from: bitso_demo.gold.ml_features
-Target column: label (1 = HVT, 0 = non-HVT)
-Feature columns: all columns starting with "f_"
+1. Load bitso_demo.gold.ml_features as pandas. Features = all columns starting with "f_". Target = label.
 
-STEP 1 — Exploratory checks before training
-- Print class balance (label=0 vs label=1 counts and percentages)
-- If the positive class is < 15%, apply class_weight='balanced' in the model
-- Print feature correlation with label (top 10 most correlated features)
+2. Train/test split: 80/20 stratified on label.
 
-STEP 2 — Train / validation / test split
-- 70% train, 15% validation, 15% test (stratified on label)
-- Print counts per split and positive rate
+3. Train a RandomForestClassifier(n_estimators=100, random_state=42, class_weight='balanced').
+   Wrap in sklearn Pipeline with SimpleImputer(strategy='median') first.
 
-STEP 3 — Model training with MLflow
-Use MLflow autologging + manual metric logging.
-Train a sklearn GradientBoostingClassifier with these hyperparameters:
-  n_estimators=200, learning_rate=0.08, max_depth=5,
-  min_samples_leaf=20, subsample=0.8, random_state=42
-Wrap in an sklearn Pipeline with SimpleImputer(strategy='median')
-and StandardScaler().
+4. Log to MLflow (use mlflow.sklearn.autolog()):
+   - Fit the model inside a mlflow.start_run() block named "hvt_propensity_v1"
+   - Log test AUC-ROC manually: mlflow.log_metric("test_auc_roc", roc_auc_score(...))
+   - Register model as: bitso_demo.gold.hvt_propensity_model
 
-Log to MLflow:
-  - All hyperparameters
-  - Validation AUC-ROC, AUC-PR, F1, precision, recall at threshold 0.5
-  - Cross-validated AUC (5-fold on train set) mean and std
-  - Feature importance bar chart as an artifact
-  - Confusion matrix as an artifact
-  - Classification report as an artifact
-  - ROC curve plot as an artifact
-  - Precision-Recall curve plot as an artifact
-  - The trained model with signature inferred from X_test, y_test
+5. Score all 10K customers. Save to bitso_demo.gold.propensity_scores with columns:
+   customer_id, propensity_score, propensity_decile (pd.qcut into 10 bins), scored_at.
 
-Register the model in Unity Catalog:
-  Model name: bitso_demo.gold.hvt_propensity_model
-  Alias: challenger (not champion yet — that happens in Prompt 14)
-
-STEP 4 — Score all customers and save predictions
-- Score the FULL dataset (all 10K customers, not just test)
-- Save to bitso_demo.gold.propensity_scores:
-    customer_id, propensity_score, propensity_decile (1–10),
-    is_predicted_hvt (score >= 0.50), actual_label, model_version,
-    scored_at (current timestamp), run_id (MLflow run ID)
-- Overwrite the table (or merge on customer_id if it exists)
-
-STEP 5 — Model evaluation report
-Print a final report:
-- Test set AUC-ROC and AUC-PR
-- Performance by propensity decile: actual HVT rate, predicted HVT rate, lift vs baseline
-- Top 15 feature importances with business interpretation for each
-- Business impact estimate: if we target the top 2 deciles, how many HVTs do we capture?
-  What % of all HVTs is that?
+6. Print test AUC-ROC and top 10 feature importances.
 ```
 
 ---
 
-## Prompt 14 — ML Production: Model Promotion & Batch Scoring Job
+## Prompt 14 — ML Production: Serving Endpoint
 
-**Goal:** Promote the model to production, create a real-time serving endpoint,
-and add a weekly batch scoring task to the orchestration job.
+**Goal:** Deploy the registered model to a real-time serving endpoint and test it.
 
 ```
-Create two notebooks and update the orchestration job to operationalise the HVT propensity model.
+Create a Python notebook called "ml_02_model_serving".
 
-NOTEBOOK 1: "ml_02_model_promotion"
-Purpose: compare challenger vs champion (if one exists) and promote the better model.
+1. Use the Databricks REST API (requests + dbutils.notebook.entry_point token) to:
+   - Create a Model Serving endpoint named "bitso-hvt-propensity"
+   - Serve model: bitso_demo.gold.hvt_propensity_model, latest version
+   - Compute size: Small, scale_to_zero_enabled: true
 
-Steps:
-1. Load the challenger model (alias: challenger) from bitso_demo.gold.hvt_propensity_model
-2. If a champion model exists (alias: champion), load it too
-3. Run both models on a held-out test set (recreate the same 15% test split using random_state=42)
-4. Compare: AUC-ROC, AUC-PR, F1
-5. Decision rule:
-   - If challenger AUC-ROC > champion AUC-ROC + 0.005: promote challenger to champion
-   - Otherwise: keep current champion, log a message, do not update alias
-6. If promoted: set alias "champion" on the new version, remove it from the old
-7. Log the comparison results as an MLflow run in the same experiment
-8. Print a clear PROMOTED / RETAINED decision with metrics
+2. Poll the endpoint status every 20s until state = "READY" (max 10 minutes).
 
-NOTEBOOK 2: "ml_03_model_serving_endpoint"
-Purpose: create a Databricks Model Serving endpoint for real-time propensity lookup.
+3. Once ready, send a test request with 3 sample rows from bitso_demo.gold.ml_features
+   and print the returned propensity scores.
 
-Steps:
-1. Check if endpoint "bitso-hvt-propensity" already exists via REST API
-2. If not, create it:
-   - Model: bitso_demo.gold.hvt_propensity_model (champion alias)
-   - Scale to zero: enabled (cost saving for demo)
-   - Compute size: Small
-3. Wait for endpoint to be READY (poll every 30s, max 10 minutes)
-4. Run a smoke test: score 5 sample customers and print the returned propensity scores
-5. Print the endpoint URL for use in downstream applications
-
-UPDATE THE ORCHESTRATION JOB:
-Add two new tasks at the end of the existing "bitso_medallion_orchestrator" job:
-
-  Step 8 — ml_01_propensity_model_training (depends on Step 6 gold.ml_features)
-            Run as notebook task on serverless compute
-  Step 9 — ml_02_model_promotion (depends on Step 8)
-            Run as notebook task on serverless compute
-
-Also create a standalone job "bitso_weekly_scoring" that:
-  1. Runs ml_01_propensity_model_training (retrain on latest data)
-  2. Runs ml_02_model_promotion
-  3. Scheduled: every Monday at 04:00 UTC
-  4. On success: send a Databricks notification to a webhook (placeholder URL)
-
-Output: full notebook content for both notebooks + the updated job JSON config.
+4. Print the endpoint URL.
 ```
 
 ---
@@ -810,13 +640,13 @@ Output: full notebook content for both notebooks + the updated job JSON config.
 | 05 | Silver engagement pipeline | DLT notebook + config | Prompt 02 |
 | 06 | Gold customer 360 pipeline | DLT notebook + config | Prompts 03–05 |
 | 07 | Gold ML features pipeline | DLT notebook + config | Prompt 06 |
-| 08 | Constraints & tags | Governance notebook | Prompt 07 |
+| 08 | 4 constraints + layer tags | ~10 ALTER TABLE statements | Prompt 07 |
 | 09 | Orchestration job | Job JSON + API notebook | Prompts 02–08 |
-| 10 | EDA: customers & trading | EDA notebook | Prompt 06 |
-| 11 | EDA: marketing & engagement | EDA notebook | Prompt 06 |
-| 12 | Genie space | Space config + test notebook | Prompt 06 |
-| 13 | Propensity model training | ML notebook + MLflow run | Prompt 07 |
-| 14 | Model promotion & serving | 2 notebooks + job update | Prompt 13 |
+| 10 | EDA: 4 customer/trading charts | Single 2×2 matplotlib grid | Prompt 06 |
+| 11 | EDA: 4 marketing/engagement charts | Single 2×2 matplotlib grid | Prompt 06 |
+| 12 | Genie space | Space config + sample questions | Prompt 06 |
+| 13 | Propensity model + scores table | RF model + MLflow + propensity_scores | Prompt 07 |
+| 14 | Model serving endpoint | Endpoint + smoke test | Prompt 13 |
 
 ---
 
