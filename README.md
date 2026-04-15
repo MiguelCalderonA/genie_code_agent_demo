@@ -1,12 +1,11 @@
-# Genie Code Agent Demo — Bitso HVT Propensity
+# Genie Code Agent Demo — Crypto Exchange HVT Propensity
 
 A hands-on demonstration of **Genie Code on Databricks**: an AI coding agent
 that builds a production-grade data platform through natural language prompts.
 
 The demo tells a complete data engineering story — from raw mock data to a live
-ML propensity model — for a real business problem: identifying which customers
-of [Bitso](https://bitso.com), a leading crypto exchange in Mexico, Argentina,
-and Brazil, are likely to become **High-Value Traders (HVT)**.
+ML propensity model — for a real business problem in the crypto exchange industry:
+identifying which customers are likely to become **High-Value Traders (HVT)**.
 
 ---
 
@@ -24,10 +23,10 @@ platform** starting from nothing but raw data and a sequence of prompts.
 
 ## The Business Problem
 
-Bitso wants to predict which customers have the highest propensity to become
-high-volume traders — defined as customers who trade **≥ 200,000 MXN per month**
-and execute **≥ 10 trades per month**. Identifying these customers early allows
-the marketing team to:
+A crypto exchange operating across Latin America wants to predict which customers
+have the highest propensity to become high-volume traders — defined as customers
+who trade **≥ 200,000 MXN per month** and execute **≥ 10 trades per month**.
+Identifying these customers early allows the marketing team to:
 
 - Prioritise onboarding incentives and KYC upgrade nudges
 - Personalise push notifications and campaign targeting
@@ -48,7 +47,7 @@ to git and uploaded to a Databricks workspace automatically.
 
 ### Part 2 — Platform (built with Genie Code)
 
-Starting with only the raw tables in `bitso_demo.raw`, a user walks through
+Starting with only the raw tables in the catalog, a user walks through
 [14 structured prompts](docs/genie_code_prompts.md) in Genie Code on Databricks.
 Genie Code builds the entire platform layer by layer: DLT pipelines, jobs,
 EDA notebooks, a Genie space, and an ML endpoint — with no manual coding.
@@ -57,7 +56,8 @@ EDA notebooks, a Genie space, and an ML endpoint — with no manual coding.
 
 ## Data Model
 
-10 synthetic raw tables represent a real crypto exchange data estate:
+10 synthetic raw tables represent a crypto exchange data estate across
+Mexico, Argentina, and Brazil:
 
 | Table | Records | Description |
 |-------|---------|-------------|
@@ -82,10 +82,10 @@ learnable signal for the ML model.
 ## Medallion Architecture
 
 ```
-bitso_demo.raw           Raw mock data (static landing zone)
+catalog.raw              Raw mock data (static landing zone)
        │
        ▼
-bitso_demo.bronze        Raw + audit metadata + DLT quality gates
+catalog.bronze           Raw + audit metadata + DLT quality gates
        │
        ├──► silver.customers          KYC resolved, enriched demographics
        ├──► silver.transactions       Unified deposit + trade + withdrawal ledger
@@ -147,18 +147,6 @@ genie_code_agent_demo/
 
 ---
 
-## Databricks Workspace
-
-All notebooks are deployed to:
-
-```
-Workspace: https://adb-361426925668745.5.azuredatabricks.net
-Path:      /Shared/bitso_demo/
-Catalog:   bitso_demo
-```
-
----
-
 ## Getting Started
 
 ### Prerequisites
@@ -170,8 +158,7 @@ Catalog:   bitso_demo
 ### Step 1 — Generate the raw data
 
 Run the `00_setup` notebook first, then `01_data_generation/99_run_all`
-in your Databricks workspace. This creates all 10 raw Delta tables in
-`bitso_demo.raw` (~1.6M total records).
+in your Databricks workspace. This creates all 10 raw Delta tables (~1.6M total records).
 
 ### Step 2 — Run the Genie Code demo
 
@@ -187,13 +174,12 @@ The 14 prompts guide Genie Code to build:
 5. **Orchestration job** — full pipeline DAG with correct dependency order
 6. **EDA notebooks** — customer segmentation, trading behaviour, marketing funnel
 7. **Genie AI/BI space** — natural language analytics on the gold layer
-8. **Propensity model** — GBT classifier tracked with MLflow, scored to a gold table
-9. **Production deployment** — champion/challenger promotion + Model Serving endpoint
+8. **Propensity model** — classifier tracked with MLflow, scored to a gold table
+9. **Production deployment** — Model Serving endpoint + smoke test
 
 ### Step 3 — Explore with Genie
 
-Once the gold layer is built, open the "Bitso Customer Intelligence" Genie space
-and ask questions like:
+Once the gold layer is built, open the Genie space and ask questions like:
 - *"Which acquisition channel produces the most high-value traders?"*
 - *"List the top 20 customers by propensity score who are not yet HVTs."*
 - *"Show monthly trading volume trends for GOLD tier customers in Mexico."*
