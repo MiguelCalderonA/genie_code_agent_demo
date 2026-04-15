@@ -60,7 +60,7 @@ support_summary = (
     .agg(
         F.count("ticket_id").alias("total_tickets"),
         F.avg("csat_score").alias("avg_csat"),
-        F.sum(F.cast("escalated", "int")).alias("escalated_tickets"),
+        F.sum(F.col("escalated").cast("int")).alias("escalated_tickets"),
     )
 )
 

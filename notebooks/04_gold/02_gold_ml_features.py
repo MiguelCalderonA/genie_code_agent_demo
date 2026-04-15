@@ -39,7 +39,7 @@ features = (
         F.col("days_since_registration").alias("f_tenure_days"),
         # KYC
         F.col("kyc_level_final").alias("f_kyc_level"),
-        F.cast("was_referred", "int").alias("f_was_referred"),
+        F.col("was_referred").cast("int").alias("f_was_referred"),
         # Trading
         F.coalesce("lifetime_trade_count",  F.lit(0)).alias("f_lifetime_trade_count"),
         F.coalesce("lifetime_volume_mxn",   F.lit(0)).alias("f_lifetime_volume_mxn"),
@@ -77,7 +77,7 @@ features = (
         F.coalesce("referral_source",  F.lit("organic_search")).alias("referral_source"),
         F.coalesce("preferred_currency",F.lit("MXN")).alias("preferred_currency"),
     )
-    .withColumn("label", F.cast("is_high_value_trader", "int"))
+    .withColumn("label", F.col("is_high_value_trader").cast("int"))
 )
 
 # COMMAND ----------

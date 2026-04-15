@@ -30,14 +30,15 @@ session_metrics = (
         F.count("session_id").alias("total_sessions"),
         F.avg("duration_seconds").alias("avg_session_duration_secs"),
         F.max("duration_seconds").alias("max_session_duration_secs"),
-        F.sum(F.cast("trade_initiated", "int")).alias("trade_initiated_sessions"),
+        F.sum(F.col("trade_initiated").cast("int")).alias("trade_initiated_sessions"),
         F.countDistinct("device_type").alias("unique_devices"),
         F.countDistinct("primary_feature").alias("unique_features_used"),
         F.max("session_start_ts").alias("last_session_ts"),
         F.min("session_start_ts").alias("first_session_ts"),
     )
     .withColumn("trade_session_rate",
-                F.col("trade_initiated_sessions") / F.col("total_sessions"))
+                F.when(F.col("total_sessions") > 0,
+                       F.col("trade_initiated_sessions") / F.col("total_sessions")).otherwise(0.0))
     .withColumn("days_between_first_last_session",
                 F.datediff(F.col("last_session_ts"), F.col("first_session_ts")))
 )
@@ -52,14 +53,16 @@ mktg_metrics = (
     .groupBy("customer_id")
     .agg(
         F.count("impression_id").alias("total_impressions"),
-        F.sum(F.cast("clicked", "int")).alias("total_clicks"),
-        F.sum(F.cast("converted", "int")).alias("total_conversions"),
+        F.sum(F.col("clicked").cast("int")).alias("total_clicks"),
+        F.sum(F.col("converted").cast("int")).alias("total_conversions"),
         F.countDistinct("campaign_id").alias("unique_campaigns_reached"),
         F.countDistinct("channel").alias("unique_channels"),
         F.sum("conversion_value_mxn").alias("total_conversion_value_mxn"),
     )
-    .withColumn("ctr", F.col("total_clicks") / F.col("total_impressions"))
-    .withColumn("cvr", F.col("total_conversions") / F.col("total_clicks"))
+    .withColumn("ctr", F.when(F.col("total_impressions") > 0,
+                              F.col("total_clicks") / F.col("total_impressions")).otherwise(0.0))
+    .withColumn("cvr", F.when(F.col("total_clicks") > 0,
+                              F.col("total_conversions") / F.col("total_clicks")).otherwise(0.0))
 )
 
 # COMMAND ----------
@@ -72,12 +75,14 @@ push_metrics = (
     .groupBy("customer_id")
     .agg(
         F.count("notification_id").alias("total_push_sent"),
-        F.sum(F.cast("opened", "int")).alias("total_push_opened"),
-        F.sum(F.cast("action_taken", "int")).alias("total_push_actions"),
-        F.sum(F.cast("is_personalised", "int")).alias("personalised_push_count"),
+        F.sum(F.col("opened").cast("int")).alias("total_push_opened"),
+        F.sum(F.col("action_taken").cast("int")).alias("total_push_actions"),
+        F.sum(F.col("is_personalised").cast("int")).alias("personalised_push_count"),
     )
-    .withColumn("push_open_rate",   F.col("total_push_opened") / F.col("total_push_sent"))
-    .withColumn("push_action_rate", F.col("total_push_actions") / F.col("total_push_sent"))
+    .withColumn("push_open_rate",   F.when(F.col("total_push_sent") > 0,
+                                          F.col("total_push_opened") / F.col("total_push_sent")).otherwise(0.0))
+    .withColumn("push_action_rate", F.when(F.col("total_push_sent") > 0,
+                                          F.col("total_push_actions") / F.col("total_push_sent")).otherwise(0.0))
 )
 
 # COMMAND ----------
@@ -85,7 +90,7 @@ push_metrics = (
 
 # COMMAND ----------
 
-all_customers = spark.table(f"{CATALOG}.silver.customers").select("customer_id")
+all_customers = spark.table(f"{CATALOG}.bronze.customers").select("customer_id").dropDuplicates(["customer_id"])
 
 engagement = (
     all_customers
